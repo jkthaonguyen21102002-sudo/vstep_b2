@@ -289,7 +289,7 @@ footer .fgrid{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap
 .scorebig .band{font-size:.78rem;padding:2px 9px;border-radius:999px;font-weight:700}
 
 /* ---------- COUNTDOWN TIMER + RESULTS ---------- */
-.timerbar{position:sticky;top:62px;z-index:6;display:flex;align-items:center;gap:12px;
+.timerbar{position:sticky;top:108px;z-index:6;display:flex;align-items:center;gap:12px;
   background:var(--surface);border:1.5px solid var(--c);border-radius:12px;padding:9px 15px;
   margin-bottom:16px;box-shadow:var(--shadow)}
 .timerbar .tlabel{font-weight:700;font-size:.84rem;display:flex;align-items:center;gap:6px}
@@ -307,6 +307,31 @@ footer .fgrid{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap
 .results .rcell{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:.82rem}
 .results .rcell b{font-family:var(--mono)}
 .results .rnote{font-size:.84rem;color:var(--ink-soft);margin:12px 0 0}
+
+/* ---------- FOCUS MODE (cửa sổ riêng cho mỗi đề) ---------- */
+.focus-bar{position:sticky;top:62px;z-index:8;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  background:rgba(255,255,255,.93);backdrop-filter:saturate(150%) blur(10px);
+  border-bottom:1px solid var(--line);padding:10px 0;margin:0 0 16px}
+.backbtn{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:.92rem;cursor:pointer;
+  border:1.5px solid var(--c,var(--brand));color:var(--c,var(--brand));background:var(--surface);
+  border-radius:11px;padding:9px 17px;transition:.15s;white-space:nowrap}
+.backbtn:hover{background:var(--c,var(--brand));color:#fff;transform:translateX(-2px)}
+.focus-title{font-weight:700;font-size:.9rem;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.test-mount.focused{display:block}
+
+/* ---------- READING TWO-COLUMN (passage left, questions right) ---------- */
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.02fr);gap:22px;align-items:start;margin:0 0 14px}
+.split-passage{position:sticky;top:160px;max-height:calc(100vh - 176px);overflow:auto;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:0 16px 14px;box-shadow:var(--shadow)}
+.split-passage .quiz-passage{margin:0;border:none;background:none;padding:0;box-shadow:none}
+.sp-tag{position:sticky;top:0;background:var(--surface);font-size:.72rem;font-weight:700;color:var(--read);
+  padding:10px 0 7px;border-bottom:1px solid var(--line);margin-bottom:9px;z-index:1}
+.split-q{min-width:0}
+.split-q .q:first-child{margin-top:0}
+@media (max-width:880px){
+  .split{grid-template-columns:1fr;gap:8px}
+  .split-passage{position:static;max-height:none;overflow:visible}
+}
 
 /* ---------- LISTENING AUDIO ---------- */
 .audio-ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--listen-soft);
@@ -1418,21 +1443,30 @@ function renderMCQTest(mount, test){
   h+=`<div class="quiz-head"><h3>${test.name}</h3><span class="chip">${test.meta}</span></div>`;
   h+=`<div class="results-mount"></div>`;
   test.sections.forEach((sec,si)=>{
+    const split=test.twoCol&&sec.type==='shared'&&sec.passage;
     const playSec=(test.audio&&sec.type==='shared')?`<button class="playbtn" data-play="${si}">🔊 Nghe đoạn</button>`:'';
     h+=`<div class="test-section"><div class="test-section-title">${sec.title}${sec.count?`<span class="pn2">${sec.count}</span>`:''}${playSec}</div>`;
     if(sec.sub) h+=`<div class="test-section-sub">${sec.sub}</div>`;
-    if(sec.type==='shared'&&sec.passage)
+    if(!split&&sec.type==='shared'&&sec.passage)
       h+=`<div class="quiz-passage">${sec.passage.map((p,i)=>`<p>${sec.number?`<span class="pn">[${i+1}]</span> `:''}${p}</p>`).join('')}</div>`;
     h+=`</div>`;
+    let itemsHTML='';
     sec.items.forEach((it,ii)=>{
       const qid=si+'-'+ii; items.push({qid,ans:it.ans,sec:sec.title}); const num=items.length;
       const playItem=(test.audio&&sec.type==='mono')?`<button class="playbtn" data-playitem="${si}-${ii}">🔊 Nghe</button>`:'';
       const script=(sec.type==='mono'&&it.script)?`<div class="quiz-passage" style="margin:0 0 10px">${it.script}</div>`:'';
       const tag=it.tag?`<span class="chip" style="margin-left:8px;font-size:.6rem">${it.tag}</span>`:'';
-      h+=`<div class="q" data-qid="${qid}"><div class="qt"><span class="qn">${num}.</span>${it.q}${tag}${playItem}</div>${script}
+      itemsHTML+=`<div class="q" data-qid="${qid}"><div class="qt"><span class="qn">${num}.</span>${it.q}${tag}${playItem}</div>${script}
         <div class="opts">${it.opts.map((o,oi)=>`<div class="opt" data-qid="${qid}" data-oi="${oi}"><span class="letter">${L[oi]}</span><span>${o}</span></div>`).join('')}</div>
         <div class="exp"><b>Giải thích:</b> ${it.exp}</div></div>`;
     });
+    if(split){
+      h+=`<div class="split"><div class="split-passage"><div class="sp-tag">📖 Bài đọc — cuộn để đọc, luôn hiển thị khi trả lời</div>
+        <div class="quiz-passage">${sec.passage.map((p,i)=>`<p>${sec.number?`<span class="pn">[${i+1}]</span> `:''}${p}</p>`).join('')}</div></div>
+        <div class="split-q">${itemsHTML}</div></div>`;
+    } else {
+      h+=itemsHTML;
+    }
   });
   h+=`<div class="test-foot"><button class="btn" data-submit>Nộp bài & chấm điểm</button><button class="btn ghost" data-reset>Làm lại</button><span class="scorebig"></span></div></div>`;
   mount.innerHTML=h;
@@ -1867,13 +1901,37 @@ function renderWritingTest(mount,test){
 function initDeck(deckId, mountId, tests, renderer){
   const deck=document.getElementById(deckId), mount=document.getElementById(mountId);
   if(!deck||!mount) return;
+  const wrap=mount.parentElement;
+  // focus bar (back button) — separates theory/deck from the open test
+  const bar=document.createElement('div');
+  bar.className='focus-bar';
+  bar.setAttribute('style',(mount.getAttribute('style')||'')+';display:none');
+  bar.innerHTML=`<button class="backbtn" type="button">← Quay lại lý thuyết & danh sách đề</button><span class="focus-title"></span>`;
+  wrap.insertBefore(bar, mount);
+  let hidden=[];
+  function enterFocus(name){
+    hidden=[];
+    [...wrap.children].forEach(ch=>{ if(ch!==mount&&ch!==bar&&getComputedStyle(ch).display!=='none'){ch.style.display='none';hidden.push(ch);} });
+    bar.querySelector('.focus-title').textContent='Đang làm: '+name;
+    bar.style.display=''; mount.classList.add('focused');
+    requestAnimationFrame(()=>{const y=bar.getBoundingClientRect().top+window.scrollY-54;window.scrollTo({top:y,behavior:'smooth'});});
+  }
+  function exitFocus(){
+    stopSpeak(); if(mount._timer){clearInterval(mount._timer);mount._timer=null;}
+    hidden.forEach(ch=>ch.style.display=''); hidden=[];
+    bar.style.display='none'; mount.classList.remove('focused');
+    mount.innerHTML=`<div class="test-empty">⬆️ Chọn một bộ đề ở trên để bắt đầu giải.</div>`;
+    deck.querySelectorAll('.deck-card').forEach(x=>x.classList.remove('on'));
+    requestAnimationFrame(()=>{const y=deck.getBoundingClientRect().top+window.scrollY-80;window.scrollTo({top:y,behavior:'smooth'});});
+  }
+  bar.querySelector('.backbtn').onclick=exitFocus;
   deck.innerHTML=tests.map((t,i)=>`<button class="deck-card" data-i="${i}">
      <div class="dn">${t.name}${t.full?'<span class="tagfull">FULL</span>':''}</div>
      <div class="dm">${t.meta}</div></button>`).join('');
   mount.innerHTML=`<div class="test-empty">⬆️ Chọn một bộ đề ở trên để bắt đầu giải.</div>`;
   deck.querySelectorAll('.deck-card').forEach(c=>c.onclick=()=>{
     deck.querySelectorAll('.deck-card').forEach(x=>x.classList.remove('on'));
-    c.classList.add('on'); renderer(mount, tests[+c.dataset.i]);
+    c.classList.add('on'); const t=tests[+c.dataset.i]; renderer(mount, t); enterFocus(t.name);
   });
 }
 
@@ -2239,9 +2297,9 @@ const R2_P4 = {title:'Passage 4 · Urban beekeeping', count:'Q31–40', type:'sh
 ]};
 
 const READING_TESTS = [
-  {id:'r1', name:'Đề 1', full:true, minutes:60, meta:'40 câu · 4 bài đọc · 60 phút', sections:[R1_P1,R1_P2,R1_P3,R1_P4]},
-  {id:'r2', name:'Đề 2', full:true, minutes:60, meta:'40 câu · 4 bài đọc · 60 phút', sections:[R2_P1,R2_P2,R2_P3,R2_P4]},
-  {id:'rq', name:'Luyện nhanh', full:false, minutes:20, meta:'10 câu · 2 bài đọc', sections:[
+  {id:'r1', name:'Đề 1', full:true, minutes:60, twoCol:true, meta:'40 câu · 4 bài đọc · 60 phút', sections:[R1_P1,R1_P2,R1_P3,R1_P4]},
+  {id:'r2', name:'Đề 2', full:true, minutes:60, twoCol:true, meta:'40 câu · 4 bài đọc · 60 phút', sections:[R2_P1,R2_P2,R2_P3,R2_P4]},
+  {id:'rq', name:'Luyện nhanh', full:false, minutes:20, twoCol:true, meta:'10 câu · 2 bài đọc', sections:[
     {title:'Bài đọc 1 · Remote work', type:'shared', number:true, passage:QUIZ_DOC.passage, items:QUIZ_DOC.items},
     {title:'Bài đọc 2 · Green cities', type:'shared', number:true, passage:QUIZ_DOC2.passage, items:QUIZ_DOC2.items}
   ]}
@@ -2744,8 +2802,8 @@ const R4_P4={title:'Passage 4 · The future of electric cars',count:'Q31–40',t
 ]};
 
 READING_TESTS.splice(2,0,
- {id:'r3',name:'Đề 3',full:true,minutes:60,meta:'40 câu · 4 bài đọc · 60 phút',sections:[R3_P1,R3_P2,R3_P3,R3_P4]},
- {id:'r4',name:'Đề 4',full:true,minutes:60,meta:'40 câu · 4 bài đọc · 60 phút',sections:[R4_P1,R4_P2,R4_P3,R4_P4]}
+ {id:'r3',name:'Đề 3',full:true,minutes:60,twoCol:true,meta:'40 câu · 4 bài đọc · 60 phút',sections:[R3_P1,R3_P2,R3_P3,R3_P4]},
+ {id:'r4',name:'Đề 4',full:true,minutes:60,twoCol:true,meta:'40 câu · 4 bài đọc · 60 phút',sections:[R4_P1,R4_P2,R4_P3,R4_P4]}
 );
 
 /* ================= NGÂN HÀNG TỪ VỰNG THEO CHỦ ĐỀ ================= */
